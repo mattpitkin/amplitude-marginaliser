@@ -13,8 +13,7 @@ Following this run:
 where MY_INSTALL_PATH is the path where you want the library
 to be installed. By default this will install to /usr/local.
 Then run:
-> make
-> make install
+> make; make install
 
 to install in the given path.
 
