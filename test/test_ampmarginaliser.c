@@ -17,7 +17,7 @@
 *  MA  02111-1307  USA
 */
 
-#include <ampmarginaliser/ampmarginaliser.h>
+#include <ampmarginaliser.h>
 
 #define TESTLEN 50
 #define TESTMODEL1(x) x

@@ -1,4 +1,4 @@
-AM_CPPFLAGS = -I$(includedir)
+AM_CPPFLAGS = -I$(top_srcdir)/src
 
 noinst_PROGRAMS = \
         test_ampmarginaliser
@@ -6,5 +6,5 @@ noinst_PROGRAMS = \
 test_ampmarginaliser_SOURCES = \
         test_ampmarginaliser.c
 
-test_ampmarginaliser_LDADD = $(libdir)/libampmarginaliser.la
+test_ampmarginaliser_LDADD = $(top_srcdir)/src/libampmarginaliser.la
 
