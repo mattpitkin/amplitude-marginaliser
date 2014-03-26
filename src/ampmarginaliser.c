@@ -17,39 +17,17 @@
 *  MA  02111-1307  USA
 */
 
+/** \file ampmarginaliser.c
+ */
+
 #include "ampmarginaliser.h"
 
-/** Function to marginalise over the amplitudes for each of the model components, where there can
-  * be an arbitrary number of models. In general all the amplitudes are marginalised between
-  * -infinity and infinity, although if specified the final model component amplitude will be
-  * marginalised between 0 and infinity i.e. it's a purely positive model.
-  *
-  * Inputs:
-  * \c Nmodels - the number of components of the signal model with separate amplitudes
-  * \c modelModel - a 2D array containing the sums of the model cross products from the likelihood
-  * e.g. for three model components f, g, h, this should contain:
-  * [[ sum(f*f), sum(f*g), sum(f*h) ],
-  *  [       0., sum(g*g), sum(g*h) ],
-  *  [       0.,       0., sum(h*h) ]].
-  * \c dataModel - a 1D array containing the sums of the data (d) with each model component from the
-  * likelihood e.g. [ sum(d*f), sum(d*g), sum(d*h) ].
-  * \c sigma - the noise standard deviation of the data.
-  * \c lastHalfRange - if this is set to 1 the final model component will be marginalised between
-  * 0 and infinity rather than the default of -infinity to infinity.
-  * 
-  * Returns:
-  * \c logL - the natural logarithm of the marginalised likelihood.
-  * 
-  * Note: this function does not apply priors to the marginalised amplitudes, but flat prior
-  * values could be applied afterwards provided the likelihoods have approached zero towards
-  * the edges of the prior range.
-  */  
 double marginalise_amplitudes(int Nmodels, double **modelModel, double *dataModel, double sigma,
                               unsigned int lastHalfRange){
-  /* coefficients of squares of model amplitudes */
+  /**  \var Coefficients of squares of model amplitudes */
   double squared[Nmodels];
 
-  /* coefficients of model amplitudes */
+  /** \var coeff An array to hold the coefficients of the model amplitudes */
   double coeffs[Nmodels][Nmodels];
   memset(coeffs, 0, sizeof(coeffs[0][0]) * Nmodels * Nmodels); /* initialise all values to zero */
 
@@ -71,25 +49,30 @@ double marginalise_amplitudes(int Nmodels, double **modelModel, double *dataMode
     }
   }
   
-  /* for five models the above coeff matrix would be equivalent to:
-   * 
-   * {{ -2.*DF,  2.*fg,  2.*fh,  2.*fi,  2.*fj},
-   *  {     0., -2.*DG,  2.*gh,  2.*gi,  2.*gj},
-   *  {     0.,     0., -2.*DH,  2.*hi,  2.*hj},
-   *  {     0.,     0.,     0., -2.*DI,  2.*ij},
-   *  {     0.,     0.,     0.,     0., -2.*DJ}}
-   * where e.g. DF = sum(d*f) and fg = sum(f*g), and where for models with
-   * amplitudes A, B, C, D and E these are the coefficients from the likelihood
-   * for each, with rows corresponding to coefficients of each amplitude A
-   * through E, and columns corresponding to cross term amplitudes, e.g.
-   * coeffs[0][0] is terms with coefficients just of A,
-   * coeffs[0][1] is terms with coefficients of A and B
-   * coeffs[0][1] is terms with coefficients of A and C
-   * ...
-   * coeffs[2][2] is terms with coefficients of just C
-   * coeffs[2][3] is terms with coefficients of C and D
-   * ...
-   * coeffs[4][4] is terms with coefficients just of E
+  /** For e.g. five models components the \c coeff matrix would be equivalent to:
+   \f[ \left(
+   \begin{array}{ccccc}
+     -2DF & 2fg   & 2fh  &  2fi &  2fj \\
+      0     & -2DG  & 2gh  &  2gi &  2gj \\
+      0     & 0     & -2DH &  2hi &  2hj \\
+      0     & 0     & 0    & -2DI &  2ij \\
+      0     & 0     & 0    & 0    & -2DJ
+   \end{array}
+   \right)
+   \f]
+   * where e.g. \f$DF = \sum d_if_i\f$ and \f$fg = \sum f_ig_i\f$, and where for
+   * models with amplitudes \f$A\f$, \f$B\f$, \f$C\f$, \f$D\f$ and \f$E\f$ these
+   * are the coefficients from the likelihood for each, with rows corresponding to
+   * coefficients of each amplitude \f$A\f$ through \f$E\f$, and columns corresponding
+   * to cross term amplitudes, e.g.:
+   * <br><tt>coeffs[0][0]</tt> is terms with coefficients just of \f$A\f$,
+   * <br><tt>coeffs[0][1]</tt> is terms with coefficients of \f$A\f$ and \f$B\f$,
+   * <br><tt>coeffs[0][1]</tt> is terms with coefficients of \f$A\f$ and \f$C\f$
+   * <br><tt>...</tt>
+   * <br><tt>coeffs[2][2]</tt> is terms with coefficients of just \f$C\f$,
+   * <br><tt>coeffs[2][3]</tt> is terms with coefficients of \f$C\f$ and \f$D\f$,
+   * <br><tt>...</tt>
+   * <br><tt>coeffs[4][4]</tt> is terms with coefficients just of \f$E\f$.
    */
 
   for ( i=0; i<nm; i++ ){
@@ -203,8 +186,8 @@ float marginalise_amplitudes_f(int Nmodels, float **modelModel, float *dataModel
 }
 
 
-double log_marg_amp_full_C(int Nmodels, double modelModel[], double dataModel[], double sigma,
-                           unsigned int lastHalfRange){
+double marginalise_amplitudes_linear(int Nmodels, double modelModel[], double dataModel[], double sigma,
+                                     unsigned int lastHalfRange){
   /* coefficients of squares of model amplitudes */
   double squared[Nmodels];
 
@@ -272,35 +255,6 @@ double log_marg_amp_full_C(int Nmodels, double modelModel[], double dataModel[],
 }
 
 
-/* For three amplitudes the marginalised likelihood ratio is given by:
- * \begin{equation}
- * \mathcal{L} = (2\pi)^{3/2}\sigma \frac{e^{-\frac{ d_h^2(f_g^2-FG) -2d_h(d_g f_g f_h - d_f f_h G -d_g F g_h + d_f f_g
-g_h) + d_g^2(f_h^2 - FH) + 2d_f d_g(f_g H - f_h g_h) + d_f^2(g_h^2 - GH)}{2\sigma^2 (FGH + 2f_g f_h g_h -G f_h^2 
-- H f_g^2 - F g_h^2) }}}{\sqrt{F}\sqrt{\frac{(FG - f_g^2)}{F}}\sqrt{\frac{FGH + 2f_g f_h g_h -G f_h^2 - F g_h^2 -
-H f_g^2}{FG - f_g^2}}}
- * \end{equation}
- * for an integral between $[-\infty, \infty]$ for all amplitudes, and
-   \begin{align}
-   \mathcal{L} =& \sqrt{2}\pi^{3/2}\sigma \frac{e^{-\frac{ d_h^2(f_g^2-FG) -2d_h(d_g f_g f_h - d_f f_h G -d_g F g_h +
-d_f f_g
-g_h) + d_g^2(f_h^2 - FH) + 2d_f d_g(f_g H - f_h g_h) + d_f^2(g_h^2 - GH)}{2\sigma^2 (FGH + 2f_g f_h g_h -G f_h^2 
-- H f_g^2 - F g_h^2) }}}{\sqrt{F}\sqrt{\frac{(FG - f_g^2)}{F}}\sqrt{\frac{FGH + 2f_g f_h g_h -G f_h^2 - F g_h^2 -
-H f_g^2}{FG - f_g^2}}} \times \nonumber \\
- & \left( 1 + {\rm erf}\left( \frac{d_f f_g g_h + d_g f_g f_h + FG d_h - G d_f f_h - F d_g g_h - d_g
-f_g^2}{\sqrt{2}\sigma(FG-f_g^2)\sqrt{\frac{FGH + 2f_g f_h g_h - F g_h^2 - G f_h^2 - h f_g^2}{FG-f_g^2}}} \right)
-\right)
- \end{align}
- * for the final integral being between $[0, \infty]$. In these equations
- * we have used the following substitutions: $d_f = \sum_{i=1}^N d_i f_i$,
- * $d_g = \sum_{i=1}^N d_i g_i$, $d_h = \sum_{i=1}^N d_i h_i$, $f_g = \sum_{i=1}^N f_i g_i$
- * $f_h = \sum_{i=1}^N f_i h_i$, $g_h = \sum_{i=1}^N g_i h_i$, $F = \sum_{i=1}^N f_i^2$, 
- * $G = \sum_{i=1}^N g_i^2$, and $H = \sum_{i=1}^N H_i^2$ where $d$ is
- * the data and $f$, $g$ and $h$ are the three model components for which the
- * amplitudes have been marginalised over.  
-
-/** This function explicitly writes out the marginalised likelihood ratio for a model consisting
- * of three components with the amplitudes marginalised over. This can be used to test the correctness
- * of the \c marginalise_amplitudes function */
 double marginalise_three_amplitudes(double **modelModel, double *dataModel, double sigma, unsigned int lastHalfRange){
   double prefactor = 0.;
   double logL = 0., div = 0.;
