@@ -1,0 +1,67 @@
+/** \mainpage Amplitude Marginaliser library
+ * 
+ * \section sec_desc Description
+ *
+ * This library of functions will analytically marginalise a Gaussian likelihood ratio
+ * (i.e. the ratio of a Gaussian likelihood given a model to a Gaussian likelihood
+ * for pure noise) over the amplitudes (e.g., the five amplitudes \f$A\f$, \f$B\f$, \f$C\f$,
+ * \f$D\f$ and \f$E\f$) of an arbitrary number of independent components of a signal model
+ * (e.g., of the five model components \f$Af(x_1)\f$, \f$Bg(x_2)\f$, \f$Ch(x_3)\f$,
+ * \f$Di(x_4)\f$ and \f$Ej(x_5)\f$):
+   \f[
+   \mathcal{L}(x_1, x_2, x_3, x_4, x_5) = \int_{-\infty}^{\infty} \int_{-\infty}^{\infty}
+   \int_{-\infty}^{\infty} \int_{-\infty}^{\infty} \int_{-\infty, 0}^{\infty}
+   \exp{-\sum_{n=1}^N\frac{1}{2\sigma^2} (Af(x_1)_n + Bg(x_2)_n + Ch(x_3)_n + Di(x_4)_n +
+   Ej(x_5)_n)^2 - 2d_n(Af(x_1)_n + Bg(x_2)_n + Ch(x_3)_n + Di(x_4)_n + Ej(x_5)_n) ) }
+   {\rm d}A {\rm d}B {\rm d}C {\rm d}D {\rm d}E.
+   \f]
+ * In the above equation we leave it open as to whether the final model amplitude is
+ * marginalised between \f$-\infty\f$ and \f$\infty\f$, or 0 and \f$\infty\f$ (i.e. is only 
+ * allowed to be positive). When expanded out and terms grouped such that summations on
+ * pairs of models, and models on data, are done separately the equation for the first
+ * integral e.g. over \f$A\f$ the equation can be placed into the format
+ \f[
+ \mathcal{L}_A = \int_{-\infty}^{\infty} \exp{\left(-\frac{1}{2\sigma^2}(XA^2 + YA + Z)\right)}
+ {\rm d}A, 
+ \f]
+ * which has the solution (via e.g. <A HREF="http://www.wolfram.com/mathematica/">Mathematica</A>)
+ \f[
+ \mathcal{L}_A = \sqrt{\frac{2\pi}{X}}\exp{\left(-\frac{1}{2\sigma^2}(Z-Y^2/(4X))\right)}.
+ \f]
+ * For that case that the integral is between 0 and $\infty$ this is instead
+ \f[
+ \mathcal{L}_A = \sqrt{\frac{\pi}{2X}}\exp{\left(-\frac{1}{2\sigma^2}(Z-Y^2/(4X))\right)}
+ {\rm erfc}{\left(\frac{Y}{2\sqrt{2\sigma^2X}}\right)}.
+ \f]
+ * Mathematica can in fact solve the full equation (for five amplitudes at least), presumably
+ * by repeated iterations of the above formula, but when the number of models is greater
+ * than 3 the output is so long that it is unusable. However, it is possible to iterate the
+ * above equation numerically as demonstrated in these library functions.
+ * 
+ * As this is a likelihood ratio you can get back to the likelihood by multiplying by:
+ \f[
+ (2\pi\sigma^2)^{-N/2}\exp{\left(-\sum_{n=1}^N \frac{d_n}{2\sigma^2} \right)}.
+ \f]
+ * 
+ * These functions do not calculate a Bayes factor as no model parameter priors are used.
+ * The functions integrate the model amplitudes over an infinite range and they don't
+ * explicitly include prior values on them. However, if one can assign a flat prior (or
+ * wide Gaussian prior) on the amplitudes, and the likelihood falls of to zero well
+ * within that prior range, then amplitude priors can be subsequently applied to the output.
+ * Priors on any other (non-independent amplitude) model parameters can be applied as
+ * required as this likelihood ratio must still be calculated over those parameter ranges.
+ * However, if actually comparing Bayesian evidences in which the same models have been
+ * used then using this likelihood ratio is fine as the priors would cancel out.
+ *
+ * It should also be noted that as in <A HREF="http://bayes.wustl.edu/glb/book.pdf">Bretthorst</A>
+ * the marginalisation integral could be
+ * simplified by converting the independent model component into a new set of
+ * orthogonal models, which makes the model component cross terms become zero. In the
+ * orthogonal model space the the likelihood model is much simpler, but does require
+ * pre-calculating the orthogonal models. Another issue with this is that it requires
+ * that all the model amplitudes are integrated between \f$-\infty\f$ and \f$\infty\f$.
+ *
+ * \section sec_lic License
+ * 
+ * This code is licensed under the <A HREF="http://www.gnu.org/licenses/gpl-2.0.html">GNU General Public License version 2</A>.
+ */
