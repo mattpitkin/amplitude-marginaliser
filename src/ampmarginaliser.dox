@@ -1,4 +1,6 @@
 /** \mainpage Amplitude Marginaliser library
+ *
+ * \author Matthew Pitkin
  * 
  * \section sec_desc Description
  *
@@ -60,8 +62,6 @@
  * orthogonal model space the the likelihood model is much simpler, but does require
  * pre-calculating the orthogonal models. Another issue with this is that it requires
  * that all the model amplitudes are integrated between \f$-\infty\f$ and \f$\infty\f$.
- *
- * \section sec_lic License
  * 
- * This code is licensed under the <A HREF="http://www.gnu.org/licenses/gpl-2.0.html">GNU General Public License version 2</A>.
+ * \copyright <A HREF="http://www.gnu.org/licenses/gpl-2.0.html">GNU General Public License version 2</A>.
  */
