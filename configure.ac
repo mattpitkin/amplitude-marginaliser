@@ -12,6 +12,9 @@ AC_PROG_CC
 AC_PROG_LIBTOOL
 AC_PROG_INSTALL
 
+# check for doxygen
+AC_CHECK_PROG(DOX_SET, doxygen, 1, 0)
+
 AC_CONFIG_FILES([ \
   Makefile \
   src/Makefile \
@@ -36,5 +39,7 @@ AC_CHECK_FUNCS([gettimeofday memset])
 
 # Initialise automake
 AM_INIT_AUTOMAKE([1.10 no-define foreign])
+
+AM_CONDITIONAL([DOX_SET], [test $DOX_SET = 1])
 
 AC_OUTPUT
