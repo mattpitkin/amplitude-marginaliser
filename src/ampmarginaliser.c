@@ -44,11 +44,11 @@ double marginalise_amplitudes(int Nmodels, double **modelModel, double *dataMode
 
     for ( j=(i+1); j<Nmodels; j++ ){
       coeffs[i][j] = 2.*modelModel[i][j];
-     
+
       if( isinf(coeffs[i][j]) ){ return -INFINITY; }
     }
   }
-  
+
   /** For e.g. five models components the \c coeff matrix would be equivalent to:
    \f[ \left(
    \begin{array}{ccccc}
@@ -80,7 +80,7 @@ double marginalise_amplitudes(int Nmodels, double **modelModel, double *dataMode
     invX = 1./X;
     invTwoX = 0.5*invX;
     invFourX = 0.25*invX;
-    
+
     /* get the coefficients from the Y^2 term */
     for ( j=i; j<Nmodels; j++ ){
       for ( k=i; k<Nmodels; k++ ){
@@ -105,8 +105,8 @@ double marginalise_amplitudes(int Nmodels, double **modelModel, double *dataMode
 
   logL -= 0.5*(Z - 0.25*Y*Y/X) / (sigma*sigma);
 
-  logL += log(sigma);
-  
+  logL += Nmodels*log(sigma);
+
   /* check whether final model is between 0 and infinity or -infinity and infinity */
   if (lastHalfRange == 1 ){
     logL += 0.5*(double)nm*AM_LN2PI + 0.5*AM_LNPI_2 + gsl_sf_log_erfc(0.5*Y/(sigma*sqrt(2.*X)));
@@ -139,7 +139,7 @@ float marginalise_amplitudes_f(int Nmodels, float **modelModel, float *dataModel
 
     for ( j=(i+1); j<Nmodels; j++ ){
       coeffs[i][j] = 2.*modelModel[i][j];
-     
+
       if( isinf(coeffs[i][j]) ){ return -INFINITY; }
     }
   }
@@ -149,7 +149,7 @@ float marginalise_amplitudes_f(int Nmodels, float **modelModel, float *dataModel
     invX = 1./X;
     invTwoX = 0.5*invX;
     invFourX = 0.25*invX;
-    
+
     /* get the coefficients from the Y^2 term */
     for ( j=i; j<Nmodels; j++ ){
       for ( k=i; k<Nmodels; k++ ){
@@ -174,13 +174,144 @@ float marginalise_amplitudes_f(int Nmodels, float **modelModel, float *dataModel
 
   logL -= 0.5*(Z - 0.25*Y*Y/X) / (sigma*sigma);
 
-  logL += log(sigma);
-  
+  logL += Nmodels*log(sigma);
+
   /* check whether final model is between 0 and infinity or -infinity and infinity */
   if (lastHalfRange == 1 ){
     logL += 0.5*(float)nm*AM_LN2PI + 0.5*AM_LNPI_2 + gsl_sf_log_erfc(0.5*Y/(sigma*sqrt(2.*X)));
   }
   else{ logL += 0.5*(float)Nmodels*AM_LN2PI; }
+
+  return logL;
+}
+
+
+double marginalise_amplitudes_except_final(int Nmodels, double **modelModel, double *dataModel, double sigma){
+  double squared[Nmodels];
+
+  double coeffs[Nmodels][Nmodels];
+  memset(coeffs, 0, sizeof(coeffs[0][0]) * Nmodels * Nmodels); /* initialise all values to zero */
+
+  int i = 0, j = 0, k = 0, nm = Nmodels-1, nmm = Nmodels-2;
+
+  double X = 0., invX = 0., invTwoX = 0., invFourX = 0., Y = 0., Z = 0., logL = 0.;
+
+  /* set up coeffs matrix */
+  for ( i=0; i<Nmodels; i++ ){
+    squared[i] = modelModel[i][i];
+    coeffs[i][i] = -2.*dataModel[i];
+
+    if( isinf(squared[i]) || isinf(coeffs[i][i]) ){ return -INFINITY; }
+
+    for ( j=(i+1); j<Nmodels; j++ ){
+      coeffs[i][j] = 2.*modelModel[i][j];
+
+      if( isinf(coeffs[i][j]) ){ return -INFINITY; }
+    }
+  }
+
+  for ( i=0; i<nmm; i++ ){
+    X = squared[i];
+    invX = 1./X;
+    invTwoX = 0.5*invX;
+    invFourX = 0.25*invX;
+
+    /* get the coefficients from the Y^2 term */
+    for ( j=i; j<Nmodels; j++ ){
+      for ( k=i; k<Nmodels; k++ ){
+        /* add on new coefficients of squared terms */
+        if ( ( j != i+1 && j != nmm ) && ( k != i+1 && k != nmm ) ){ Z -= coeffs[i][j]*coeffs[i][k]*invFourX; }
+
+        if ( j == i ){
+          if ( k > j && k < nm ){ squared[k] -= coeffs[j][k]*coeffs[j][k]*invFourX; }
+        }
+        else {
+          if ( k == i && j < nm ){ coeffs[j][j] -= coeffs[i][j]*coeffs[i][k]*invTwoX; }
+          else if ( k > j ){ coeffs[j][k] -= coeffs[i][j]*coeffs[i][k]*invTwoX; }
+        }
+      }
+    }
+  }
+
+  X = squared[nmm];
+  for ( i=nmm; i<Nmodels; i++ ){ Y += coeffs[nmm][i]; }
+  Z += (squared[nm] + coeffs[nm][nm]);
+
+  /* calculate analytic integral and get log likelihood */
+  for ( i=0; i<nm; i++ ){ logL -= 0.5*log(squared[i]); }
+
+  logL -= 0.5*(Z - 0.25*Y*Y/X) / (sigma*sigma);
+
+  logL += nm*log(sigma);
+
+  logL += 0.5*(double)nm*AM_LN2PI;
+
+  return logL;
+}
+
+
+float marginalise_amplitudes_except_final_f(int Nmodels, float **modelModel, float *dataModel, float sigma){
+  /* coefficients of squares of model amplitudes */
+  float squared[Nmodels];
+
+  /* coefficients of model amplitudes */
+  float coeffs[Nmodels][Nmodels];
+  memset(coeffs, 0, sizeof(coeffs[0][0]) * Nmodels * Nmodels); /* initialise all values to zero */
+
+  int i = 0, j = 0, k = 0, nm = Nmodels-1, nmm = Nmodels-2;
+
+  float X = 0., invX = 0., invTwoX = 0., invFourX = 0., Y = 0., Z = 0., logL = 0.;
+
+  /* set up coeffs matrix */
+  for ( i=0; i<Nmodels; i++ ){
+    squared[i] = modelModel[i][i];
+    coeffs[i][i] = -2.*dataModel[i];
+
+    if( isinf(squared[i]) || isinf(coeffs[i][i]) ){ return -INFINITY; }
+
+    for ( j=(i+1); j<Nmodels; j++ ){
+      coeffs[i][j] = 2.*modelModel[i][j];
+
+      if( isinf(coeffs[i][j]) ){ return -INFINITY; }
+    }
+  }
+
+  for ( i=0; i<nmm; i++ ){
+    X = squared[i];
+    invX = 1./X;
+    invTwoX = 0.5*invX;
+    invFourX = 0.25*invX;
+
+    /* get the coefficients from the Y^2 term */
+    for ( j=i; j<Nmodels; j++ ){
+      for ( k=i; k<Nmodels; k++ ){
+        /* add on new coefficients of squared terms */
+        if ( ( j != i+1 && j != nmm ) && ( k != i+1 && k != nmm ) ){ Z -= coeffs[i][j]*coeffs[i][k]*invFourX; }
+
+        if ( j == i ){
+          if ( k > j && k < nm ){ squared[k] -= coeffs[j][k]*coeffs[j][k]*invFourX; }
+        }
+        else {
+          if ( k == i && j < nm ){ coeffs[j][j] -= coeffs[i][j]*coeffs[i][k]*invTwoX; }
+          else if ( k > j ){ coeffs[j][k] -= coeffs[i][j]*coeffs[i][k]*invTwoX; }
+        }
+      }
+    }
+  }
+
+  X = squared[nmm];
+  for ( i=nmm; i<Nmodels; i++ ){ Y += coeffs[nmm][i]; }
+  Z += (squared[nm] + coeffs[nm][nm]);
+
+  /* calculate analytic integral and get log likelihood */
+  for ( i=0; i<nm; i++ ){ logL -= 0.5*log(squared[i]); }
+
+  logL -= 0.5*(Z - 0.25*Y*Y/X) / (sigma*sigma);
+
+  logL += nm*log(sigma);
+
+  /* check whether final model is between 0 and infinity or -infinity and infinity */
+  logL += 0.5*(float)nm*AM_LN2PI;
 
   return logL;
 }
@@ -243,7 +374,7 @@ double marginalise_amplitudes_linear(int Nmodels, double modelModel[], double da
 
   logL -= 0.5*(Z - 0.25*Y*Y/X) / (sigma*sigma);
 
-  logL += log(sigma);
+  logL += Nmodels*log(sigma);
 
   /* check whether final model is between 0 and infinity or -infinity and infinity */
   if (lastHalfRange == 1 ){
@@ -255,42 +386,108 @@ double marginalise_amplitudes_linear(int Nmodels, double modelModel[], double da
 }
 
 
+double marginalise_amplitudes_except_final_linear(int Nmodels, double modelModel[], double dataModel[], double sigma){
+  /* coefficients of squares of model amplitudes */
+  double squared[Nmodels];
+
+  /* coefficients of model amplitudes */
+  double coeffs[Nmodels][Nmodels];
+  memset(coeffs, 0, sizeof(coeffs[0][0]) * Nmodels * Nmodels); /* initialise all values to zero */
+
+  int i = 0, j = 0, k = 0, nm = Nmodels-1, nmm = Nmodels-2;
+
+  double X = 0., invX = 0., invTwoX = 0., invFourX = 0., Y = 0., Z = 0., logL = 0.;
+
+  /* set up coeffs matrix */
+  for ( i=0; i<Nmodels; i++ ){
+    squared[i] = modelModel[i*Nmodels + i];
+    coeffs[i][i] = -2.*dataModel[i];
+
+    if( isinf(squared[i]) || isinf(coeffs[i][i]) ){ return -INFINITY; }
+
+    for ( j=(i+1); j<Nmodels; j++ ){
+      coeffs[i][j] = 2.*modelModel[i*Nmodels + j];
+
+      if( isinf(coeffs[i][j]) ){ return -INFINITY; }
+    }
+  }
+
+  for ( i=0; i<nmm; i++ ){
+    X = squared[i];
+    invX = 1./X;
+    invTwoX = 0.5*invX;
+    invFourX = 0.25*invX;
+
+    /* get the coefficients from the Y^2 term */
+    for ( j=i; j<Nmodels; j++ ){
+      for ( k=i; k<Nmodels; k++ ){
+        /* add on new coefficients of squared terms */
+        if ( ( j != i+1 && j != nmm ) && ( k != i+1 && k != nmm ) ){ Z -= coeffs[i][j]*coeffs[i][k]*invFourX; }
+
+        if ( j == i ){
+          if ( k > j && k < nm ){ squared[k] -= coeffs[j][k]*coeffs[j][k]*invFourX; }
+        }
+        else {
+          if ( k == i && j < nm ){ coeffs[j][j] -= coeffs[i][j]*coeffs[i][k]*invTwoX; }
+          else if ( k > j ){ coeffs[j][k] -= coeffs[i][j]*coeffs[i][k]*invTwoX; }
+        }
+      }
+    }
+  }
+
+  X = squared[nmm];
+  for ( i=nmm; i<Nmodels; i++ ){ Y += coeffs[nmm][i]; }
+  Z += (squared[nm] + coeffs[nm][nm]);
+
+  /* calculate analytic integral and get log likelihood */
+  for ( i=0; i<nm; i++ ){ logL -= 0.5*log(squared[i]); }
+
+  logL -= 0.5*(Z - 0.25*Y*Y/X) / (sigma*sigma);
+
+  logL += nm*log(sigma);
+
+  logL += 0.5*(double)nm*AM_LN2PI;
+
+  return logL;
+}
+
+
 double marginalise_three_amplitudes(double **modelModel, double *dataModel, double sigma, unsigned int lastHalfRange){
   double prefactor = 0.;
   double logL = 0., div = 0.;
-  
+
   double F = modelModel[0][0], G = modelModel[1][1], H = modelModel[2][2];
   double fg = modelModel[0][1], fh = modelModel[0][2], gh = modelModel[1][2];
   double df = dataModel[0], dg = dataModel[1], dh = dataModel[2];
-  
+
   prefactor = -0.5*log( F );
   prefactor -= 0.5*log( ( F*G - AM_SQUARE(fg) ) / F );
-  prefactor -= 0.5*log( ( G*AM_SQUARE(fh) - 2.*fg*fh*gh + F*AM_SQUARE(gh) + H*AM_SQUARE(fg) - F*G*H ) / 
+  prefactor -= 0.5*log( ( G*AM_SQUARE(fh) - 2.*fg*fh*gh + F*AM_SQUARE(gh) + H*AM_SQUARE(fg) - F*G*H ) /
     ( AM_SQUARE(fg) - F*G ) );
-  prefactor += log( sigma ) + 1.5*M_LNPI;
- 
+  prefactor += 3.*log( sigma ) + 1.5*M_LNPI;
+
   if ( lastHalfRange == 1 ){
     double inerf = 0., X = ( AM_SQUARE(fg) - F*G );
-    
+
     prefactor += 0.5*M_LN2;
-    
+
     inerf = -dg*fg*fh + df*fh*G + dh*X + dg*F*gh - df*fg*gh;
-    inerf /= ( sigma * M_SQRT2 * X * sqrt( ( AM_SQUARE(fh)*G - 2.*fg*fh*gh + 
-                                             F*AM_SQUARE(gh) + H*AM_SQUARE(fg) - F*G*H ) / X ) ); 
+    inerf /= ( sigma * M_SQRT2 * X * sqrt( ( AM_SQUARE(fh)*G - 2.*fg*fh*gh +
+                                             F*AM_SQUARE(gh) + H*AM_SQUARE(fg) - F*G*H ) / X ) );
 
     logL += log( 1. + gsl_sf_erf( inerf ) );
   }
   else{
     prefactor += 1.5*M_LN2;
   }
-  
+
   div = 2.*AM_SQUARE(sigma) * ( G*AM_SQUARE(fh) - 2.*fg*fh*gh + H*AM_SQUARE(fg) + F*AM_SQUARE(gh) - F*G*H );
-  
-  logL += ( AM_SQUARE(dh)*(AM_SQUARE(fg)-F*G) - 2.*dh*(dg*fg*fh - df*fh*G - dg*F*gh + df*fg*gh) + 
+
+  logL += ( AM_SQUARE(dh)*(AM_SQUARE(fg)-F*G) - 2.*dh*(dg*fg*fh - df*fh*G - dg*F*gh + df*fg*gh) +
             AM_SQUARE(dg)*(AM_SQUARE(fh)-F*H) + 2.*df*dg*(fg*H - fh*gh) + AM_SQUARE(df)*(AM_SQUARE(gh)-G*H) ) / div;
 
   logL += prefactor;
-  
+
   return logL;
 }
 
@@ -298,38 +495,73 @@ double marginalise_three_amplitudes(double **modelModel, double *dataModel, doub
 float marginalise_three_amplitudes_f(float **modelModel, float *dataModel, float sigma, unsigned int lastHalfRange){
   float prefactor = 0.;
   float logL = 0., div = 0.;
-  
+
   float F = modelModel[0][0], G = modelModel[1][1], H = modelModel[2][2];
   float fg = modelModel[0][1], fh = modelModel[0][2], gh = modelModel[1][2];
   float df = dataModel[0], dg = dataModel[1], dh = dataModel[2];
-  
+
   prefactor = -0.5*log( F );
   prefactor -= 0.5*log( ( F*G - AM_SQUARE(fg) ) / F );
-  prefactor -= 0.5*log( ( G*AM_SQUARE(fh) - 2.*fg*fh*gh + F*AM_SQUARE(gh) + H*AM_SQUARE(fg) - F*G*H ) / 
+  prefactor -= 0.5*log( ( G*AM_SQUARE(fh) - 2.*fg*fh*gh + F*AM_SQUARE(gh) + H*AM_SQUARE(fg) - F*G*H ) /
     ( AM_SQUARE(fg) - F*G ) );
-  prefactor += log( sigma ) + 1.5*M_LNPI;
- 
+  prefactor += 3.*log( sigma ) + 1.5*M_LNPI;
+
   if ( lastHalfRange == 1 ){
     float inerf = 0., X = ( AM_SQUARE(fg) - F*G );
-    
+
     prefactor += 0.5*M_LN2;
-    
+
     inerf = -dg*fg*fh + df*fh*G + dh*X + dg*F*gh - df*fg*gh;
-    inerf /= ( sigma * M_SQRT2 * X * sqrt( ( AM_SQUARE(fh)*G - 2.*fg*fh*gh + 
-                                             F*AM_SQUARE(gh) + H*AM_SQUARE(fg) - F*G*H ) / X ) ); 
+    inerf /= ( sigma * M_SQRT2 * X * sqrt( ( AM_SQUARE(fh)*G - 2.*fg*fh*gh +
+                                             F*AM_SQUARE(gh) + H*AM_SQUARE(fg) - F*G*H ) / X ) );
 
     logL += log( 1. + gsl_sf_erf( inerf ) );
   }
   else{
     prefactor += 1.5*M_LN2;
   }
-  
+
   div = 2.*AM_SQUARE(sigma) * ( G*AM_SQUARE(fh) - 2.*fg*fh*gh + H*AM_SQUARE(fg) + F*AM_SQUARE(gh) - F*G*H );
-  
-  logL += ( AM_SQUARE(dh)*(AM_SQUARE(fg)-F*G) - 2.*dh*(dg*fg*fh - df*fh*G - dg*F*gh + df*fg*gh) + 
+
+  logL += ( AM_SQUARE(dh)*(AM_SQUARE(fg)-F*G) - 2.*dh*(dg*fg*fh - df*fh*G - dg*F*gh + df*fg*gh) +
             AM_SQUARE(dg)*(AM_SQUARE(fh)-F*H) + 2.*df*dg*(fg*H - fh*gh) + AM_SQUARE(df)*(AM_SQUARE(gh)-G*H) ) / div;
 
   logL += prefactor;
-  
+
+  return logL;
+}
+
+
+double marginalise_three_amplitudes_exclude_final(double **modelModel, double *dataModel, double sigma){
+  double prefactor = 0.;
+  double logL = 0., div = 0., X = 0.;
+
+  double F = modelModel[0][0], G = modelModel[1][1], H = modelModel[2][2], K = modelModel[3][3];
+  double fg = modelModel[0][1], fh = modelModel[0][2], fk = modelModel[0][3];
+  double gh = modelModel[1][2], gk = modelModel[1][3];
+  double hk = modelModel[2][3];
+  double df = dataModel[0], dg = dataModel[1], dh = dataModel[2], dk = dataModel[3];
+
+  X = F*G*H - AM_SQUARE(fh)*G + 2.*fg*fh*gh - F*AM_SQUARE(gh) - AM_SQUARE(fg)*H;
+
+  logL += 2.*dk*AM_SQUARE(fh)*G + AM_SQUARE(dh)*(AM_SQUARE(fg) - F*G) - 4.*dk*fg*fh*gh + AM_SQUARE(df)*AM_SQUARE(gh) +
+          2.*dk*F*AM_SQUARE(gh) - 2.*df*fk*AM_SQUARE(gh) + AM_SQUARE(fk)*AM_SQUARE(gh) + 2.*df*fh*gh*gk -
+          2.*fh*fk*gh*gk + AM_SQUARE(fh)*AM_SQUARE(gk) + 2.*dk*AM_SQUARE(fg)*H - AM_SQUARE(df)*G*H - 2.*dk*F*G*H +
+          2.*df*fk*G*H - AM_SQUARE(fk)*G*H - 2.*df*fg*gk*H + 2.*fg*fk*gk*H - F*AM_SQUARE(gk)*H +
+          AM_SQUARE(dg)*(AM_SQUARE(fh) - F*H) - 2.*df*fh*G*hk + 2.*fh*fk*G*hk + 2.*df*fg*gh*hk -
+          2.*fg*fk*gh*hk - 2.*fg*fh*gk*hk + 2.*F*gh*gk*hk + AM_SQUARE(fg)*AM_SQUARE(hk) - F*G*AM_SQUARE(hk) -
+          2.*dh*(dg*fg*fh - df*fh*G + fh*fk*G - dg*F*gh + df*fg*gh - fg*fk*gh - fg*fh*gk + F*gh*gk +
+          AM_SQUARE(fg)*hk - F*G*hk) - 2.*dg*(df*fh*gh - fh*fk*gh + AM_SQUARE(fh)*gk - df*fg*H + fg*fk*H - F*gk*H -
+          fg*fh*hk + F*gh*hk) - AM_SQUARE(fh)*G*K + 2.*fg*fh*gh*K - F*AM_SQUARE(gh)*K -
+          AM_SQUARE(fg)*H*K + F*G*H*K;
+
+  div = -2.*X*AM_SQUARE(sigma);
+
+  logL /= div;
+
+  prefactor = 1.5*M_LN2 + 1.5*M_LNPI + 3*log( sigma ) - 0.5*log( X );
+
+  logL += prefactor;
+
   return logL;
 }
