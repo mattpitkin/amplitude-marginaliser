@@ -4,12 +4,12 @@
  *
  * \section sec_desc Description
  *
- * This library provides functions to analytically marginalise a Gaussian likelihood ratio
+ * This library (<A HREF="https://github.com/mattpitkin/amplitude-marginaliser">amplitude-marginaliser</A>) provides functions to analytically marginalise a Gaussian likelihood ratio
  * (i.e. the ratio of a Gaussian likelihood given a model to a Gaussian likelihood
- * for pure noise) over the amplitudes (e.g., the five amplitudes \f$A\f$, \f$B\f$, \f$C\f$,
- * \f$D\f$ and \f$E\f$) of an arbitrary number of independent components of a signal model
- * (e.g., of the five model components \f$Af(x_1)\f$, \f$Bg(x_2)\f$, \f$Ch(x_3)\f$,
- * \f$Di(x_4)\f$ and \f$Ej(x_5)\f$):
+ * for pure noise) over the amplitudes of an arbitrary number of independent components of
+ * a signal model. The algorithm used is described in the Appendix of <A HREF="http://arxiv.org/abs/1406.1712">Pitkin, Williams, Fletcher & Grant, arXiv:1406.1712</A> (if you use this library for work in a publication I would be grateful if you cite that paper). E.g., for the five amplitudes \f$A\f$, \f$B\f$, \f$C\f$, of the five model
+ * components \f$Af(x_1)\f$, \f$Bg(x_2)\f$, \f$Ch(x_3)\f$, \f$Di(x_4)\f$ and \f$Ej(x_5)\f$), the
+ * integral performed would be:
    \f[
    \mathcal{L}(x_1, x_2, x_3, x_4, x_5) = \int_{-\infty}^{\infty} \int_{-\infty}^{\infty}
    \int_{-\infty}^{\infty} \int_{-\infty}^{\infty} \int_{-\infty, 0}^{\infty}
@@ -75,6 +75,8 @@
  * can be analytically marginalised out. This means that the data does not need detrending to
  * remove the polynomial background, which could effect the signal by creating unwanted artifacts
  * and causing a loss of signal power.
+ *
+ * An example of the algorithm being used for such a case is given in <A HREF="http://arxiv.org/abs/1406.1712">Pitkin, Williams, Fletcher & Grant, arXiv:1406.1712</A>, with accompanying code found <A HREF="https://github.com/BayesFlare/bayesflare">here</A>.
  *
  * \copyright &copy; Matthew Pitkin (2014), <A HREF="http://www.gnu.org/licenses/gpl-2.0.html">GNU General Public License version 2</A>.
  */

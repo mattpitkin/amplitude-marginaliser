@@ -142,7 +142,7 @@ H f_g^2}{FG - f_g^2}}} \times \\
 f_g^2}{\sqrt{2}\sigma(FG-f_g^2)\sqrt{\frac{FGH + 2f_g f_h g_h - F g_h^2 - G f_h^2 - h f_g^2}{FG-f_g^2}}} \right)
 \right)
  \f}
- * for the final integral being between $[0, \infty]$. In these equations we have used the following
+ * for the final integral being between \f$[0, \infty]\f$. In these equations we have used the following
  * substitutions: \f$d_f = \sum_{i=1}^N d_i f_i\f$,
  * \f$d_g = \sum_{i=1}^N d_i g_i\f$, \f$d_h = \sum_{i=1}^N d_i h_i\f$, \f$f_g = \sum_{i=1}^N f_i g_i\f$
  * \f$f_h = \sum_{i=1}^N f_i h_i\f$, \f$g_h = \sum_{i=1}^N g_i h_i\f$, \f$F = \sum_{i=1}^N f_i^2\f$,
